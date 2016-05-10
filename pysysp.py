@@ -68,7 +68,7 @@ class GeneralSpectrum(object):
         self.wavelength = None
         self.flux = None
 
-    def loadfits1(self, filename=None, wavename='Wavelength', fluxname='Flux'):
+    def loadfits_orig(self, filename=None, wavename='Wavelength', fluxname='Flux'):
         """Load a FITS file containing a spectrum"""
         hdulist = pyfits.open(filename)
         self.wavelength = hdulist[1].data.field(wavename)
@@ -78,8 +78,14 @@ class GeneralSpectrum(object):
     def loadfits(self, filename=None, wavename='Wavelength', fluxname='Flux'):
         """Load a FITS file containing a spectrum"""
         hdulist = pyfits.open(filename)
-        self.wavelength = hdulist[0].data
-        self.flux = 0.0
+        self.flux = hdulist[0].data
+        crval1 = hdulist[0].header['CRVAL1']
+        cdelt1 = hdulist[0].header['CDELT1']
+        wl = []
+        for d in self.flux:
+        	wl.append(crval1)
+        	crval1 += cdelt1
+        self.wavelength = np.array(wl)
         hdulist.close()
         
     def loadascii(self, filename=None):
@@ -188,7 +194,7 @@ class StarSpectrum(GeneralSpectrum):
         wbmin = np.min(wb)
         wsmax = np.max(ws)
         wsmin = np.min(ws)
-        print(wbmin,wbmax,wsmin,wsmax)
+        #print(wbmin,wbmax,wsmin,wsmax)
         if wbmin < wsmin or wbmax > wsmax:
             raise ValueError('Bandpass and spectrum must completely overlap.')
         else:
