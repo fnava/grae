@@ -4,13 +4,12 @@ import pysysp
 import pyfits
 
 import numpy as np
+from pathlib import Path,PurePosixPath
 
 #load a spectrum from a fits file
 #vega = pysysp.StarSpectrum('alpha_lyr_stis_006.fits')
 
-
-
-def miles_parse(filename=None):
+def parse_miles_spectra(filename=None):
 	if filename is None: 
 		print("void MILES spectra filename")
 		return None
@@ -42,9 +41,28 @@ def miles_parse(filename=None):
 
 	return values
 
-synt='../miles/Mbi1.30Zp0.40T14.0000_iTp0.40_Ep0.40.fits'
-miles_spectra = pysysp.StarSpectrum(synt)
-miles_params = miles_parse(synt)
+#synt='../miles/Mbi1.30Zp0.40T14.0000_iTp0.40_Ep0.40.fits'
+#miles_spectra = pysysp.StarSpectrum(synt)
+
+def parse_miles():
+	miles_spectra = []
+	miles_path = Path('../miles/')
+	count = 0
+	for miles_file in miles_path.iterdir():
+		suffix = PurePosixPath(miles_file).suffix
+		path = str(miles_file)
+		#print(path, suffix)
+		if miles_file.is_file() and suffix=='.fits':
+			miles_params = parse_miles_spectra('../miles/%s' % miles_file)
+			miles_spectra.append((pysysp.StarSpectrum(path),miles_params))
+			count += 1
+			if count % 10: 
+				print('.', end='', flush=True)
+			else:
+				print(count, end='', flush=True)
+		if count > 100: break
+	#shards = sorted(shards_band, key=lambda b: np.max(b.wavelength))
+	return miles_spectra
 
 #print the flux
 #print(miles_spectra.flux)
@@ -64,7 +82,6 @@ miles_params = miles_parse(synt)
 #print(miles_spectra.apmag(S,mag='Vega',mzero=0.03))
 
 # Parse all SHARD band responses:
-from pathlib import Path,PurePosixPath
 def parse_shard():
 	shards_band = []
 	shards_path = Path('../shards/')
@@ -87,4 +104,8 @@ def compute_response(shards, spectra):
 	for a,b in resp: print(a,b)
 
 # Put all together
-compute_response(parse_shard(), miles_spectra)
+shards_data = parse_shard()
+miles_spectra = parse_miles()
+for (s,pp) in miles_spectra:
+	print(pp)
+	compute_response(shards_data, s) 
