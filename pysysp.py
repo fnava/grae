@@ -144,7 +144,7 @@ class StarSpectrum(GeneralSpectrum):
         ----------
         band: function or callable 
             a band pass given as a function of wavelength
-        mag: {'Vega','AB','ST'}
+        mag: {'Vega','AB','ST','nolog'}
             name of the magnitude system to use
             Default is 'Vega'
         mstandard: number
@@ -161,6 +161,9 @@ class StarSpectrum(GeneralSpectrum):
         elif mag == 'ST':
             f = np.trapz(fr * band(wr) * wr, x=wr) / np.trapz(band(wr) * wr, x=wr)
             return -2.5 * np.log10(f) + stzero
+        elif mag == 'nolog':
+            f = np.trapz(fr * band(wr) * wr, x=wr) / np.trapz(band(wr) * wr, x=wr)
+            return f
         elif mag == 'Vega':
             vegar = self._waverange(band.wavelength, vegawavelength)
             vegawr = vegawavelength[vegar]

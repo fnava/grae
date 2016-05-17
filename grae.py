@@ -13,7 +13,7 @@ def parse_miles_spectra(filename=None):
 	if filename is None: 
 		print("void MILES spectra filename")
 		return None
-	fit1 = pyfits.open('../miles/Mbi1.30Zp0.40T14.0000_iTp0.40_Ep0.40.fits')
+	fit1 = pyfits.open(filename)
 	cards = fit1[0].header
 	params = {
 		'Models Library':	"# Models Library:",
@@ -46,21 +46,22 @@ def parse_miles_spectra(filename=None):
 
 def parse_miles():
 	miles_spectra = []
-	miles_path = Path('../miles/')
+	miles_path = Path('../miles/MILES/')
 	count = 0
 	for miles_file in miles_path.iterdir():
 		suffix = PurePosixPath(miles_file).suffix
 		path = str(miles_file)
 		#print(path, suffix)
 		if miles_file.is_file() and suffix=='.fits':
-			miles_params = parse_miles_spectra('../miles/%s' % miles_file)
+			#miles_params = parse_miles_spectra('../miles/MILES/%s' % miles_file)
+			miles_params = parse_miles_spectra('%s' % miles_file)
 			miles_spectra.append((pysysp.StarSpectrum(path),miles_params))
 			count += 1
 			if count % 10: 
 				print('.', end='', flush=True)
 			else:
-				print(count, end='', flush=True)
-		if count > 100: break
+				print('{0:4d}'.format(count), end='', flush=True)
+		#if count > 100: break
 	#shards = sorted(shards_band, key=lambda b: np.max(b.wavelength))
 	return miles_spectra
 
@@ -93,19 +94,40 @@ def parse_shard():
 
 # Compute band magnitudes for a given spectra
 def compute_response(shards, spectra):
-	resp=[]
+	resp_row=[]
 	for band in shards:
 		mag=0
 		try:	
+			#mag=spectra.apmag(band,mag='nolog',mzero=0.0)
 			mag=spectra.apmag(band,mag='AB',mzero=0.0)
 		except ValueError:
 			pass
-		resp.append((np.max(band.wavelength),mag))
-	for a,b in resp: print(a,b)
+		#resp_row.append((np.max(band.wavelength),mag))
+		resp_row.append(mag)
+	 #for a,b in resp: print(a,b)
+	return resp_row
 
 # Put all together
 shards_data = parse_shard()
 miles_spectra = parse_miles()
+
+first_row = list(miles_spectra[0][1].keys())
+for b in shards_data:
+	first_row.append(np.min(b.wavelength))
+resp = []
+resp.append(first_row)
+
 for (s,pp) in miles_spectra:
-	print(pp)
-	compute_response(shards_data, s) 
+	row = list(pp.values())
+	row += compute_response(shards_data, s) 
+	resp.append(row)
+
+import csv
+spamWriter = csv.writer(open('shardsout.csv', 'w'), delimiter=',',
+		quotechar='"', quoting=csv.QUOTE_MINIMAL)
+for r in resp:
+	spamWriter.writerow(r)
+
+import pickle
+with open('shardsout.pickle', 'wb') as f:
+	pickle.dump(resp, f)
