@@ -2,7 +2,8 @@
 
 import pysysp
 import pyfits
-
+import os.path
+import json
 import numpy as np
 from pathlib import Path,PurePosixPath
 
@@ -84,11 +85,17 @@ def parse_miles():
 
 # Parse all SHARD band responses:
 def parse_shard():
+	# Reading data back
+	with open('shards.json', 'r') as f:
+		shards_filters = json.load(f)
 	shards_band = []
 	shards_path = Path('../shards/')
-	for shard_file in shards_path.iterdir(): 
-		if shard_file.is_file() and PurePosixPath(shard_file).suffix=='.res':
-			shards_band.append(pysysp.BandPass('../shards/%s' % shard_file))
+	for filter in shards_filters: 	
+	#for shard_file in shards_path.iterdir(): 
+		filter_filename = 'shards_'+filter['Filter'].lower()+'.res'
+		filter_filepath = os.path.join('../shards/', filter_filename)
+		if os.path.isfile(filter_filepath):
+			shards_band.append(pysysp.BandPass(filter_filepath))
 	shards = sorted(shards_band, key=lambda b: np.max(b.wavelength))
 	return shards
 
