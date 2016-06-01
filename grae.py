@@ -16,6 +16,7 @@ def parse_miles_spectra(filename=None):
 		return None
 	fit1 = pyfits.open(filename)
 	cards = fit1[0].header
+	fit1.close()
 	params = {
 		'Models Library':	"# Models Library:",
 		'IMF':			"# IMF, Slope:",
@@ -36,10 +37,17 @@ def parse_miles_spectra(filename=None):
 				r = re.compile('= \'(%s *) (.*)\'' % v)
 				#print(r)
 				m = r.match(l)
-				if m is not None: 
-					#print(m.group(2))
-					values[k]=m.group(2)
-
+				if m is not None:
+					value = m.group(2)
+					#print(value)
+					if k == 'IMF':
+						r = re.compile('(..), *(.*)')
+						n = r.match(value)
+						if n is not None:
+							values['IMF']=(n.group(1))
+							values['slope']=(n.group(2))
+					else:
+						values[k]=value
 	return values
 
 #synt='../miles/Mbi1.30Zp0.40T14.0000_iTp0.40_Ep0.40.fits'
@@ -115,8 +123,12 @@ def compute_response(shards, spectra):
 	return resp_row
 
 # Put all together
+print("Parsing SHARDS filters data...", end='', flush=True)
 shards_data = parse_shard()
+print("done.", flush=True)
+print("Parsing MILES SSP spectra files...", end='', flush=True)
 miles_spectra = parse_miles()
+print("done.", flush=True)
 
 first_row = list(miles_spectra[0][1].keys())
 for b in shards_data:
