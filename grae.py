@@ -18,12 +18,12 @@ def parse_miles_spectra(filename=None):
 	cards = fit1[0].header
 	fit1.close()
 	params = {
-		'Models Library':	"# Models Library:",
+		'Model':		"# Models Library:",
+		'Isochrone':		"# Isochrone:",
 		'IMF':			"# IMF, Slope:",
 		'Age':			"# Age \(Gyr\):",
 		'MH':			"# \[M\/H\]:",
 		'alphaFe':		"# \[alpha\/Fe\]:",
-		'Isochrone':		"# Isochrone:",
 		'Version': 		"# Version:",
 		'Redshift':		"# Redshift \(z\):"
 		}
@@ -53,6 +53,40 @@ def parse_miles_spectra(filename=None):
 #synt='../miles/Mbi1.30Zp0.40T14.0000_iTp0.40_Ep0.40.fits'
 #miles_spectra = pysysp.StarSpectrum(synt)
 
+def parse_miles2():
+	""" Generate a nested dict:
+	miles_spectra = {Model:,Isochrone:,IMF:} = [spectra, {slope:,Age:...}]
+	"""
+	miles_spectra = {}
+	miles_path = Path('../miles/MILES/')
+	count = 0
+	for miles_file in miles_path.iterdir():
+		suffix = PurePosixPath(miles_file).suffix
+		path = str(miles_file)
+		#print(path, suffix)
+		if miles_file.is_file() and suffix=='.fits':
+			#miles_params = parse_miles_spectra('../miles/MILES/%s' % miles_file)
+			allpars = parse_miles_spectra('%s' % miles_file)
+			pars = [ allpars['Model'],
+				allpars['Isochrone'],
+				allpars['IMF']
+				]
+			if not pars[0] in miles_spectra:
+				miles_spectra[pars[0]] = {}
+			if not pars[1] in miles_spectra[pars[0]]:
+				miles_spectra[pars[0]][pars[1]] = {}
+			if not pars[2] in miles_spectra[pars[0]][pars[1]]:
+				miles_spectra[pars[0]][pars[1]][pars[2]] = {}
+			miles_spectra[pars[0]][pars[1]][pars[2]] = [pysysp.StarSpectrum(path),allpars]
+			count += 1
+			if count % 10: 
+				print('.', end='', flush=True)
+			else:
+				print('{0:4d}'.format(count), end='', flush=True)
+		#if count > 100: break
+	#shards = sorted(shards_band, key=lambda b: np.max(b.wavelength))
+	return miles_spectra
+
 def parse_miles():
 	miles_spectra = []
 	miles_path = Path('../miles/MILES/')
@@ -70,7 +104,7 @@ def parse_miles():
 				print('.', end='', flush=True)
 			else:
 				print('{0:4d}'.format(count), end='', flush=True)
-		#if count > 100: break
+		if count > 100: break
 	#shards = sorted(shards_band, key=lambda b: np.max(b.wavelength))
 	return miles_spectra
 
@@ -130,16 +164,23 @@ print("Parsing MILES SSP spectra files...", end='', flush=True)
 miles_spectra = parse_miles()
 print("done.", flush=True)
 
-first_row = list(miles_spectra[0][1].keys())
+print("Computing SHARD responses...", end='', flush=True)
+keys = [ 'Model', 'Isochrone', 'IMF',
+	'slope', 'Age', 'MH', 'alphaFe', 'Version', 'Redshift']
+first_row = list(keys)
 for b in shards_data:
 	first_row.append(np.min(b.wavelength))
+
 resp = []
 resp.append(first_row)
-
-for (s,pp) in miles_spectra:
-	row = list(pp.values())
-	row += compute_response(shards_data, s) 
+row = []
+for (spectra,pars) in miles_spectra:
+	for k in keys:
+		row.append(pars[k])
+	row += compute_response(shards_data, spectra) 
 	resp.append(row)
+print("done.", flush=True)
+
 
 import csv
 spamWriter = csv.writer(open('shardsout.csv', 'w'), delimiter=',',
